@@ -174,6 +174,11 @@ static const struct pmc_event_descr corei7_event_table[] =
 	__PMC_EV_ALIAS_COREI7()
 };
 
+static const struct pmc_event_descr haswell_event_table[] =
+{
+    __PMC_EV_ALIAS_HASWELL()
+};
+
 static const struct pmc_event_descr westmere_event_table[] =
 {
 	__PMC_EV_ALIAS_WESTMERE()
@@ -182,6 +187,11 @@ static const struct pmc_event_descr westmere_event_table[] =
 static const struct pmc_event_descr corei7uc_event_table[] =
 {
 	__PMC_EV_ALIAS_COREI7UC()
+};
+
+static const struct pmc_event_descr haswelluc_event_table[] =
+{
+    __PMC_EV_ALIAS_HASWELLUC()
 };
 
 static const struct pmc_event_descr westmereuc_event_table[] =
@@ -203,6 +213,7 @@ PMC_MDEP_TABLE(atom, IAP, PMC_CLASS_IAF, PMC_CLASS_TSC);
 PMC_MDEP_TABLE(core, IAP, PMC_CLASS_TSC);
 PMC_MDEP_TABLE(core2, IAP, PMC_CLASS_IAF, PMC_CLASS_TSC);
 PMC_MDEP_TABLE(corei7, IAP, PMC_CLASS_IAF, PMC_CLASS_TSC, PMC_CLASS_UCF, PMC_CLASS_UCP);
+PMC_MDEP_TABLE(haswell, IAP, PMC_CLASS_IAF, PMC_CLASS_TSC, PMC_CLASS_UCF, PMC_CLASS_UCP);
 PMC_MDEP_TABLE(westmere, IAP, PMC_CLASS_IAF, PMC_CLASS_TSC, PMC_CLASS_UCF, PMC_CLASS_UCP);
 PMC_MDEP_TABLE(k7, K7, PMC_CLASS_TSC);
 PMC_MDEP_TABLE(k8, K8, PMC_CLASS_TSC);
@@ -236,9 +247,11 @@ PMC_CLASS_TABLE_DESC(atom, IAP, atom, iap);
 PMC_CLASS_TABLE_DESC(core, IAP, core, iap);
 PMC_CLASS_TABLE_DESC(core2, IAP, core2, iap);
 PMC_CLASS_TABLE_DESC(corei7, IAP, corei7, iap);
+PMC_CLASS_TABLE_DESC(haswell, IAP, haswell, iap);
 PMC_CLASS_TABLE_DESC(westmere, IAP, westmere, iap);
 PMC_CLASS_TABLE_DESC(ucf, UCF, ucf, ucf);
 PMC_CLASS_TABLE_DESC(corei7uc, UCP, corei7uc, ucp);
+PMC_CLASS_TABLE_DESC(haswelluc, UCP, haswelluc, ucp);
 PMC_CLASS_TABLE_DESC(westmereuc, UCP, westmereuc, ucp);
 #endif
 #if	defined(__i386__)
@@ -520,6 +533,8 @@ static struct pmc_event_alias core2_aliases_without_iaf[] = {
 #define	atom_aliases_without_iaf	core2_aliases_without_iaf
 #define corei7_aliases			core2_aliases
 #define corei7_aliases_without_iaf	core2_aliases_without_iaf
+#define haswell_aliases         core2_aliases
+#define haswell_aliases_without_iaf core2_aliases_without_iaf
 #define westmere_aliases		core2_aliases
 #define westmere_aliases_without_iaf	core2_aliases_without_iaf
 
@@ -620,6 +635,31 @@ static struct pmc_masks iap_transition_mask[] = {
 	NULLMASK
 };
 
+static struct pmc_masks iap_rsp_mask_haswell[] = {
+    PMCMASK(REQ_DMND_DATA_RD,   (1ULL <<  0)),
+    PMCMASK(REQ_DMND_RFO,       (1ULL <<  1)),
+    PMCMASK(REQ_DMND_IFETCH,    (1ULL <<  2)),
+    PMCMASK(REQ_PF_DATA_RD,     (1ULL <<  4)),
+    PMCMASK(REQ_PF_RFO,     (1ULL <<  5)),
+    PMCMASK(REQ_PF_IFETCH,      (1ULL <<  6)),
+    PMCMASK(REQ_OTHER,      (1ULL << 15)),
+    PMCMASK(RES_ANY,        (1ULL << 16)),
+    PMCMASK(RES_SUPPLIER_SUPP,  (1ULL << 17)),
+    PMCMASK(RES_SUPPLIER_LLC_HITM,  (1ULL << 18)),
+    PMCMASK(RES_SUPPLIER_LLC_HITE,  (1ULL << 19)),
+    PMCMASK(RES_SUPPLIER_LLC_HITS,  (1ULL << 20)),
+    PMCMASK(RES_SUPPLIER_LLC_HITF,  (1ULL << 21)),
+    PMCMASK(RES_SUPPLIER_LOCAL, (1ULL << 22)),
+    PMCMASK(RES_SNOOP_SNP_NONE, (1ULL << 31)),
+    PMCMASK(RES_SNOOP_SNP_NO_NEEDED,(1ULL << 32)),
+    PMCMASK(RES_SNOOP_SNP_MISS, (1ULL << 33)),
+    PMCMASK(RES_SNOOP_HIT_NO_FWD,   (1ULL << 34)),
+    PMCMASK(RES_SNOOP_HIT_FWD,  (1ULL << 35)),
+    PMCMASK(RES_SNOOP_HITM,     (1ULL << 36)),
+    PMCMASK(RES_NON_DRAM,       (1ULL << 37)),
+    NULLMASK
+};
+
 static struct pmc_masks iap_rsp_mask[] = {
 	PMCMASK(DMND_DATA_RD,		(1 <<  0)),
 	PMCMASK(DMND_RFO,		(1 <<  1)),
@@ -713,6 +753,11 @@ iap_allocate_pmc(enum pmc_event pe, char *ctrspec,
 				n = pmc_parse_mask(iap_rsp_mask, p, &rsp);
 			} else
 				return (-1);
+		} else if (cpu_info.pm_cputype == PMC_CPU_INTEL_HASWELL) {
+            	    	if (KWPREFIXMATCH(p, IAP_KW_RSP "=")) {
+                		n = pmc_parse_mask(iap_rsp_mask_haswell, p, &rsp);
+            	    	} else
+                		return (-1);
 		} else
 			return (-1);
 
@@ -2514,6 +2559,10 @@ pmc_event_names_of_class(enum pmc_class cl, const char ***eventnames,
 			ev = corei7_event_table;
 			count = PMC_EVENT_TABLE_SIZE(corei7);
 			break;
+		case PMC_CPU_INTEL_HASWELL:
+            		ev = haswell_event_table;
+            		count = PMC_EVENT_TABLE_SIZE(haswell);
+            		break;
 		case PMC_CPU_INTEL_WESTMERE:
 			ev = westmere_event_table;
 			count = PMC_EVENT_TABLE_SIZE(westmere);
@@ -2535,6 +2584,10 @@ pmc_event_names_of_class(enum pmc_class cl, const char ***eventnames,
 			ev = corei7uc_event_table;
 			count = PMC_EVENT_TABLE_SIZE(corei7uc);
 			break;
+		case PMC_CPU_INTEL_HASWELL:
+            		ev = haswelluc_event_table;
+            		count = PMC_EVENT_TABLE_SIZE(haswelluc);
+            		break;
 		case PMC_CPU_INTEL_WESTMERE:
 			ev = westmereuc_event_table;
 			count = PMC_EVENT_TABLE_SIZE(westmereuc);
@@ -2756,6 +2809,11 @@ pmc_init(void)
 		pmc_class_table[n++] = &corei7uc_class_table_descr;
 		PMC_MDEP_INIT_INTEL_V2(corei7);
 		break;
+	case PMC_CPU_INTEL_HASWELL:
+        	pmc_class_table[n++] = &ucf_class_table_descr;
+        	pmc_class_table[n++] = &haswelluc_class_table_descr;
+        	PMC_MDEP_INIT_INTEL_V2(haswell);
+        	break;
 	case PMC_CPU_INTEL_WESTMERE:
 		pmc_class_table[n++] = &ucf_class_table_descr;
 		pmc_class_table[n++] = &westmereuc_class_table_descr;
@@ -2873,6 +2931,10 @@ _pmc_name_of_event(enum pmc_event pe, enum pmc_cputype cpu)
 			ev = corei7_event_table;
 			evfence = corei7_event_table + PMC_EVENT_TABLE_SIZE(corei7);
 			break;
+		case PMC_CPU_INTEL_HASWELL:
+            		ev = haswell_event_table;
+            		evfence = haswell_event_table + PMC_EVENT_TABLE_SIZE(haswell);
+            		break;
 		case PMC_CPU_INTEL_WESTMERE:
 			ev = westmere_event_table;
 			evfence = westmere_event_table + PMC_EVENT_TABLE_SIZE(westmere);

@@ -53,6 +53,9 @@
 #define	PMC_FN_MUNMAP			8
 #define	PMC_FN_USER_CALLCHAIN		9
 
+
+#define PMC_HR  0   /* Hardware ring buffer */
+#define PMC_SR  1   /* Software ring buffer */
 struct pmckern_procexec {
 	int		pm_credentialschanged;
 	uintfptr_t	pm_entryaddr;

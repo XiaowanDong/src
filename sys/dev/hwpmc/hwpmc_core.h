@@ -59,7 +59,9 @@ struct pmc_md_iap_op_pmcallocate {
 #define	IAP_EN		(1 << 22)
 #define	IAP_INV		(1 << 23)
 #define	IAP_CMASK(C)	(((C) & 0xFF) << 24)
-
+ 
+#define IA_OFFCORE_RSP_MASK_I7WM    0x000000F7FF
+#define IA_OFFCORE_RSP_MASK_SBIB    0x3F807F8FFF
 #define	IA_OFFCORE_RSP_MASK	0xF7FF
 
 #ifdef	_KERNEL
