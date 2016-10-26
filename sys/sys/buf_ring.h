@@ -226,6 +226,34 @@ buf_ring_dequeue_sc(struct buf_ring *br)
  * without modifying it, or NULL if the ring is empty
  * race-prone if not protected by a lock
  */
+
+static __inline void
+buf_ring_advance_sc(struct buf_ring *br)
+{
+	uint32_t cons_head, cons_next;
+	uint32_t prod_tail;
+	
+	cons_head = br->br_cons_head;
+	prod_tail = br->br_prod_tail;
+	
+	cons_next = (cons_head + 1) & br->br_cons_mask;
+	if (cons_head == prod_tail) 
+		return;
+	br->br_cons_head = cons_next;
+#ifdef DEBUG_BUFRING
+	br->br_ring[cons_head] = NULL;
+#endif
+	br->br_cons_tail = cons_next;
+}
+
+static __inline void
+buf_ring_putback_sc(struct buf_ring *br, void *new)
+{
+	KASSERT(br->br_cons_head != br->br_prod_tail, 
+		("Buf-Ring has none in putback")) ;
+	br->br_ring[br->br_cons_head] = new;
+}
+
 static __inline void *
 buf_ring_peek(struct buf_ring *br)
 {
